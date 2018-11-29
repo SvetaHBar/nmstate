@@ -25,10 +25,19 @@ from .testlib.statelib import INTERFACES
 
 
 VLAN_IFNAME = 'eth1.101'
-
+VLAN1_IFNAME = 'eth1.102'
 
 def test_add_and_remove_vlan(eth1_up):
     with vlan_interface(VLAN_IFNAME, 101) as desired_state:
+        assertlib.assert_state(desired_state)
+
+    current_state = statelib.show_only((VLAN_IFNAME,))
+    assert not current_state[INTERFACES]
+
+
+def test_add_and_remove_two_vlans_on_iface(eth1_up):
+
+    with two_vlan_interface(VLAN_IFNAME, VLAN1_IFNAME, 101, 102) as desired_state:
         assertlib.assert_state(desired_state)
 
     current_state = statelib.show_only((VLAN_IFNAME,))
@@ -47,6 +56,47 @@ def vlan_interface(ifname, vlan_id):
                     'id': vlan_id,
                     'base-iface': 'eth1'
                 }
+            }
+        ]
+    }
+    netapplier.apply(desired_state)
+    try:
+        yield desired_state
+    finally:
+        netapplier.apply({
+                INTERFACES: [
+                    {
+                        'name': ifname,
+                        'type': 'vlan',
+                        'state': 'absent'
+                    }
+                ]
+            }
+        )
+
+
+@contextmanager
+def two_vlan_interface(ifname,ifname1, vlan_id1, vlan_id2):
+    desired_state = {
+        INTERFACES: [
+            {
+                'name': ifname,
+                'type': 'vlan',
+                'state': 'up',
+                'vlan':{
+                        'id': vlan_id1,
+                        'base-iface': 'eth1'
+                }
+            },
+            {
+
+                'name': ifname1,
+                'type': 'vlan',
+                'state': 'up',
+                'vlan':{
+                        'id': vlan_id2,
+                        'base-iface': 'eth1'
+                        }
             }
         ]
     }
